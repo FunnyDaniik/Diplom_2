@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.apache.http.HttpStatus.*;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.emptyString;
@@ -27,11 +28,14 @@ public class OrderApiTest extends BaseApiTest {
     public void setUp() {
         super.setUp();
         validIngredientIds = IngredientApi.getValidIngredientIds();
+        accessToken = UserApi.registerRandomUser();
     }
 
     @After
     public void tearDown() {
-        deleteUser(accessToken);
+        if (accessToken != null) {
+            deleteUser(accessToken);
+        }
     }
 
     @Test
@@ -39,7 +43,7 @@ public class OrderApiTest extends BaseApiTest {
     public void testGetIngredientsList() {
         IngredientApi.getIngredients()
                 .then()
-                .statusCode(200)
+                .statusCode(SC_OK)
                 .body("success", equalTo(true))
                 .body("data", not(empty()))
                 .body("data[0]._id", not(emptyString()))
@@ -50,11 +54,9 @@ public class OrderApiTest extends BaseApiTest {
     @Test
     @DisplayName("Создание заказа с авторизацией и валидными ингредиентами")
     public void testCreateOrderWithAuthAndValidIngredients() {
-        accessToken = UserApi.registerRandomUser();
-
         OrderApi.createOrder(accessToken, validIngredientIds.subList(0, 2))
                 .then()
-                .statusCode(200)
+                .statusCode(SC_OK)
                 .body("success", equalTo(true))
                 .body("name", not(emptyString()))
                 .body("order.number", notNullValue());
@@ -65,7 +67,7 @@ public class OrderApiTest extends BaseApiTest {
     public void testCreateOrderWithoutAuth() {
         OrderApi.createOrderWithoutAuth(validIngredientIds.subList(0, 2))
                 .then()
-                .statusCode(200)
+                .statusCode(SC_OK)
                 .body("success", equalTo(true));
     }
 
@@ -74,7 +76,7 @@ public class OrderApiTest extends BaseApiTest {
     public void testCreateOrderWithoutIngredients() {
         OrderApi.createOrderWithoutAuth(Collections.emptyList())
                 .then()
-                .statusCode(400)
+                .statusCode(SC_BAD_REQUEST)
                 .body("success", equalTo(false))
                 .body("message", equalTo("Ingredient ids must be provided"));
     }
@@ -84,18 +86,20 @@ public class OrderApiTest extends BaseApiTest {
     public void testCreateOrderWithInvalidIngredients() {
         OrderApi.createOrderWithoutAuth(Arrays.asList("invalid_hash_1", "invalid_hash_2"))
                 .then()
-                .statusCode(500);
+                .statusCode(SC_INTERNAL_SERVER_ERROR);
     }
 
     @Test
     @DisplayName("Получение заказов пользователя")
     public void testGetUserOrders() {
-        accessToken = UserApi.registerRandomUser();
-        OrderApi.createOrder(accessToken, validIngredientIds.subList(0, 2));
+        // Создаем заказ для пользователя
+        OrderApi.createOrder(accessToken, validIngredientIds.subList(0, 2))
+                .then()
+                .statusCode(SC_OK);
 
         OrderApi.getUserOrders(accessToken)
                 .then()
-                .statusCode(200)
+                .statusCode(SC_OK)
                 .body("success", equalTo(true))
                 .body("orders", not(empty()))
                 .body("orders[0].number", notNullValue())

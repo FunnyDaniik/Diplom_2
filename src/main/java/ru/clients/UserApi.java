@@ -1,6 +1,7 @@
 package ru.clients;
 
 
+import io.qameta.allure.Step;
 import io.restassured.response.Response;
 import lombok.experimental.UtilityClass;
 import ru.models.Credentials;
@@ -18,6 +19,7 @@ public class UserApi {
     private static final String LOGOUT_ENDPOINT = "/api/auth/logout";
     private static final String TOKEN_ENDPOINT = "/api/auth/token";
 
+    @Step("Регистрация пользователя")
     public static Response registerUser(User user) {
         return given()
                 .contentType("application/json")
@@ -26,6 +28,7 @@ public class UserApi {
                 .post(REGISTER_ENDPOINT);
     }
 
+    @Step("Регистрация случайного пользователя")
     public static String registerRandomUser() {
         User user = User.builder()
                 .email("test-user-" + UUID.randomUUID() + "@yandex.ru")
@@ -37,6 +40,7 @@ public class UserApi {
         return response.path("accessToken");
     }
 
+    @Step("Авторизация пользователя")
     public static Response login(Credentials credentials) {
         return given()
                 .contentType("application/json")
@@ -45,6 +49,7 @@ public class UserApi {
                 .post(LOGIN_ENDPOINT);
     }
 
+    @Step("Выход из системы")
     public static Response logout(TokenRequest tokenRequest) {
         return given()
                 .contentType("application/json")
@@ -53,6 +58,7 @@ public class UserApi {
                 .post(LOGOUT_ENDPOINT);
     }
 
+    @Step("Обновление токена")
     public static Response refreshToken(TokenRequest tokenRequest) {
         return given()
                 .contentType("application/json")

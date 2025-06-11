@@ -10,6 +10,8 @@ import ru.models.User;
 
 import java.util.UUID;
 
+import static org.apache.http.HttpStatus.SC_FORBIDDEN;
+import static org.apache.http.HttpStatus.SC_OK;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 @Epic("API Stellar Burgers")
@@ -31,7 +33,9 @@ public class UserRegistrationTest extends BaseApiTest {
 
     @After
     public void tearDown() {
-        deleteUser(accessToken);
+        if (accessToken != null && !accessToken.isEmpty()) {
+            deleteUser(accessToken);
+        }
     }
 
     @Test
@@ -40,7 +44,7 @@ public class UserRegistrationTest extends BaseApiTest {
         Response response = UserApi.registerUser(testUser);
 
         response.then()
-                .statusCode(200)
+                .statusCode(SC_OK)
                 .body("success", equalTo(true));
 
         accessToken = response.path("accessToken");
@@ -49,11 +53,14 @@ public class UserRegistrationTest extends BaseApiTest {
     @Test
     @DisplayName("Регистрация существующего пользователя")
     public void testCreateDuplicateUserFails() {
-        UserApi.registerUser(testUser);
+        // Первая регистрация - должна быть успешной
+        Response firstRegistration = UserApi.registerUser(testUser);
+        accessToken = firstRegistration.path("accessToken");
 
+        // Попытка повторной регистрации
         UserApi.registerUser(testUser)
                 .then()
-                .statusCode(403)
+                .statusCode(SC_FORBIDDEN)
                 .body("success", equalTo(false))
                 .body("message", equalTo("User already exists"));
     }
@@ -62,14 +69,46 @@ public class UserRegistrationTest extends BaseApiTest {
     @DisplayName("Создание пользователя без пароля")
     public void testCreateUserWithoutPasswordFails() {
         User userWithoutPassword = User.builder()
-                .email("test-user@yandex.ru")
+                .email("test-user-" + UUID.randomUUID() + "@yandex.ru")
                 .password(null)
                 .name("Test User")
                 .build();
 
         UserApi.registerUser(userWithoutPassword)
                 .then()
-                .statusCode(403)
+                .statusCode(SC_FORBIDDEN)
+                .body("success", equalTo(false))
+                .body("message", equalTo("Email, password and name are required fields"));
+    }
+
+    @Test
+    @DisplayName("Создание пользователя без email")
+    public void testCreateUserWithoutEmailFails() {
+        User userWithoutEmail = User.builder()
+                .email(null)
+                .password("ValidPassword123!")
+                .name("Test User")
+                .build();
+
+        UserApi.registerUser(userWithoutEmail)
+                .then()
+                .statusCode(SC_FORBIDDEN)
+                .body("success", equalTo(false))
+                .body("message", equalTo("Email, password and name are required fields"));
+    }
+
+    @Test
+    @DisplayName("Создание пользователя без имени")
+    public void testCreateUserWithoutNameFails() {
+        User userWithoutName = User.builder()
+                .email("test-user-" + UUID.randomUUID() + "@yandex.ru")
+                .password("ValidPassword123!")
+                .name(null)
+                .build();
+
+        UserApi.registerUser(userWithoutName)
+                .then()
+                .statusCode(SC_FORBIDDEN)
                 .body("success", equalTo(false))
                 .body("message", equalTo("Email, password and name are required fields"));
     }
